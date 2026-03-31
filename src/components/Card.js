@@ -1,6 +1,6 @@
 "use client"
 
-import { FaGamepad, FaDollarSign, FaClock, FaUsers } from "react-icons/fa"
+import { FaGamepad, FaClock, FaUsers } from "react-icons/fa"
 import Card from "./Card"
 
 export default function Cards({ zones }) {
@@ -33,9 +33,9 @@ export default function Cards({ zones }) {
         <div className="flex items-center justify-between">
           <div>
             <p>Revenue Today</p>
-            <h2 className="text-2xl">$1250</h2>
+            <h2 className="text-2xl">₹1250</h2>
           </div>
-          <FaDollarSign size={30}/>
+          <div className="text-2xl">₹</div>
         </div>
       </Card>
 

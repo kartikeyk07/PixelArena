@@ -60,7 +60,7 @@ export default function AdminMenu() {
     if (!price || isNaN(price) || Number(price) <= 0) {
       newErrors.price = "Price must be a positive number"
     } else if (Number(price) > 50) {
-      newErrors.price = "Price cannot exceed $50"
+      newErrors.price = "Price cannot exceed ₹50"
     }
 
     if (!category) {
@@ -192,7 +192,7 @@ export default function AdminMenu() {
                 <div className="ml-4">
                   <p className="text-slate-400 text-sm">Avg Price</p>
                   <p className="text-2xl font-bold text-slate-100">
-                    ${menuItems.length > 0 ? (menuItems.reduce((sum, item) => sum + item.price, 0) / menuItems.length).toFixed(2) : '0.00'}
+                    ₹{menuItems.length > 0 ? (menuItems.reduce((sum, item) => sum + item.price, 0) / menuItems.length).toFixed(2) : '0.00'}
                   </p>
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function AdminMenu() {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Price *</label>
                 <input
                   type="number"
-                  placeholder="Price ($0.01 - $50)"
+                  placeholder="Price (₹0.01 - ₹50)"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
@@ -324,14 +324,14 @@ export default function AdminMenu() {
                       <td className="p-4 text-slate-100 font-medium">{item.name}</td>
                       <td className="p-4 text-slate-300">
                         <Link
-                          href={`/admin/zones/${item.zoneId}`}
+                          href={`/admin/zones/₹{item.zoneId}`}
                           className="text-blue-400 hover:text-blue-300 transition-colors duration-200"
                         >
                           {getZoneName(item.zoneId)}
                         </Link>
                       </td>
                       <td className="p-4 text-slate-300">{item.category}</td>
-                      <td className="p-4 text-slate-300">${item.price}</td>
+                      <td className="p-4 text-slate-300">₹{item.price}</td>
                       <td className="p-4">
                         <button
                           onClick={() => deleteItem(item.id)}

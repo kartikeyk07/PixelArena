@@ -1,7 +1,6 @@
 "use client"
-
 import { useEffect, useState } from "react"
-import { FaTimes, FaFileAlt, FaGamepad, FaUtensils, FaDollarSign, FaCalendarAlt, FaClock, FaCreditCard } from "react-icons/fa"
+import { FaTimes, FaFileAlt, FaGamepad, FaUtensils, FaCalendarAlt, FaClock, FaCreditCard } from "react-icons/fa"
 
 export default function BookingBillModal({ isOpen, onClose, booking, games, zones }) {
   const [game, setGame] = useState(null)
@@ -109,7 +108,7 @@ export default function BookingBillModal({ isOpen, onClose, booking, games, zone
                   <p className="text-slate-400 text-sm">Gaming Session (1 hour)</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-100 font-semibold">${gameTotal.toFixed(2)}</p>
+                  <p className="text-slate-100 font-semibold">₹{gameTotal.toFixed(2)}</p>
                 </div>
               </div>
 
@@ -125,7 +124,7 @@ export default function BookingBillModal({ isOpen, onClose, booking, games, zone
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-slate-100 font-semibold">${item.total.toFixed(2)}</p>
+                      <p className="text-slate-100 font-semibold">₹{item.total.toFixed(2)}</p>
                     </div>
                   </div>
                 ))
@@ -143,11 +142,11 @@ export default function BookingBillModal({ isOpen, onClose, booking, games, zone
               <span className="text-xl font-bold text-slate-100">Total Amount</span>
               <div className="text-right">
                 <div className="flex items-center gap-2 text-2xl font-bold text-green-400">
-                  <FaDollarSign />
+                  <span>₹</span>
                   <span>{grandTotal.toFixed(2)}</span>
                 </div>
                 <p className="text-slate-400 text-sm">
-                  Game: ${gameTotal.toFixed(2)} | Cafe: ${menuTotal.toFixed(2)}
+                  Game: ₹{gameTotal.toFixed(2)} | Cafe: ₹{menuTotal.toFixed(2)}
                 </p>
               </div>
             </div>

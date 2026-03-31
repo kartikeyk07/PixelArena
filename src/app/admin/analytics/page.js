@@ -96,13 +96,8 @@ export default function AdminAnalytics() {
 
   const selectedZoneData = selectedZone ? zoneAnalytics.find(z => z.id === selectedZone) : null
 
-  // Recent bookings (last 7 days)
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const recentBookings = bookings.filter(booking => {
-    const bookingDate = booking.createdAt?.toDate?.() || new Date(booking.createdAt)
-    return bookingDate >= sevenDaysAgo
-  })
+  // All bookings
+  const recentBookings = bookings
 
   if (loading) {
     return (
@@ -158,7 +153,7 @@ export default function AdminAnalytics() {
                   </div>
                   <div className="ml-4">
                     <p className="text-slate-400 text-sm">Zone Revenue</p>
-                    <p className="text-2xl font-bold text-slate-100">${selectedZoneData.revenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-slate-100">₹{selectedZoneData.revenue.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -205,7 +200,7 @@ export default function AdminAnalytics() {
                   </div>
                   <div className="ml-4">
                     <p className="text-slate-400 text-sm">Total Revenue</p>
-                    <p className="text-2xl font-bold text-slate-100">${totalRevenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-slate-100">₹{totalRevenue.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -238,7 +233,7 @@ export default function AdminAnalytics() {
                   </div>
                   <div className="ml-4">
                     <p className="text-slate-400 text-sm">Avg Booking Value</p>
-                    <p className="text-2xl font-bold text-slate-100">${avgBookingValue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-slate-100">₹{avgBookingValue.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -272,8 +267,8 @@ export default function AdminAnalytics() {
                         <td className="p-4 text-slate-100">{zone.gamesCount}</td>
                         <td className="p-4 text-slate-100">{zone.menuCount}</td>
                         <td className="p-4 text-slate-100">{zone.bookingsCount}</td>
-                        <td className="p-4 text-slate-100">${zone.revenue.toFixed(2)}</td>
-                        <td className="p-4 text-slate-100">${zone.avgPrice.toFixed(2)}</td>
+                        <td className="p-4 text-slate-100">₹{zone.revenue.toFixed(2)}</td>
+                        <td className="p-4 text-slate-100">₹{zone.avgPrice.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -285,57 +280,84 @@ export default function AdminAnalytics() {
           {/* Recent Activity */}
           <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
             <h2 className="text-xl font-semibold text-slate-100 mb-6">
-              Recent Activity {selectedZone && selectedZoneData && `- ${selectedZoneData.name}`} (Last 7 Days)
+              All Bookings {selectedZone && selectedZoneData && `- ${selectedZoneData.name}`}
             </h2>
             <div className="space-y-4">
               {(() => {
-                const filteredBookings = selectedZone
+                let filteredBookings = selectedZone
                   ? recentBookings.filter(booking => {
                       const game = games.find(g => g.id === booking.gameId)
                       return game && game.zoneId === selectedZone
                     })
                   : recentBookings
+
+                // Group bookings by game name and date
+                const groupedBookings = filteredBookings.reduce((acc, booking) => {
+                  const game = games.find(g => g.id === booking.gameId)
+                  const zone = game ? zones.find(z => z.id === game.zoneId) : null
+                  const bookingDate = booking.date || booking.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown Date'
+                  const key = `${game?.name || 'Unknown Game'}|${bookingDate}`
+                  
+                  if (!acc[key]) {
+                    acc[key] = {
+                      gameName: game?.name || 'Unknown Game',
+                      zoneName: zone?.name || 'Unknown Zone',
+                      date: bookingDate,
+                      gameId: booking.gameId,
+                      zoneId: game?.zoneId,
+                      count: 0,
+                      totalRevenue: 0,
+                      pricePerHour: game?.pricePerHour || 0,
+                      bookings: []
+                    }
+                  }
+                  
+                  acc[key].count += 1
+                  acc[key].totalRevenue += (game?.pricePerHour || 0)
+                  acc[key].bookings.push(booking)
+                  
+                  return acc
+                }, {})
+
+                const groupedList = Object.values(groupedBookings)
                 
-                return filteredBookings.length > 0 ? (
-                  filteredBookings.slice(0, 10).map(booking => {
-                    const game = games.find(g => g.id === booking.gameId)
-                    const zone = game ? zones.find(z => z.id === game.zoneId) : null
-                    return (
-                      <div
-                        key={booking.id}
-                        className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-650 cursor-pointer transition-colors"
-                        onClick={() => {
-                          setSelectedBooking(booking)
-                          setShowBillModal(true)
-                        }}
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="p-2 bg-blue-600 rounded-lg">
-                            <FaGamepad className="text-white text-sm" />
-                          </div>
-                          <div>
-                            <p className="text-slate-100 font-medium">
-                              {game?.name || 'Unknown Game'} - {zone?.name || 'Unknown Zone'}
-                            </p>
-                            <p className="text-slate-400 text-sm">
-                              {booking.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown Date'}
-                            </p>
-                          </div>
+                return groupedList.length > 0 ? (
+                  groupedList.slice(0, 10).map((group, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-650 cursor-pointer transition-colors"
+                      onClick={() => {
+                        // Use first booking from group for bill modal
+                        setSelectedBooking(group.bookings[0])
+                        setShowBillModal(true)
+                      }}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="p-2 bg-blue-600 rounded-lg">
+                          <FaGamepad className="text-white text-sm" />
                         </div>
-                        <div className="text-right">
+                        <div>
                           <p className="text-slate-100 font-medium">
-                            ${game && booking.duration ? (game.pricePerHour * booking.duration).toFixed(2) : '0.00'}
+                            {group.gameName} - {group.zoneName}
                           </p>
                           <p className="text-slate-400 text-sm">
-                            {booking.duration || 0} hours
+                            {group.date} • {group.count} booking{group.count > 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
-                    )
-                  })
+                      <div className="text-right">
+                        <p className="text-slate-100 font-medium">
+                          ₹{group.totalRevenue.toFixed(2)}
+                        </p>
+                        <p className="text-slate-400 text-sm">
+                          {group.count} × ₹{group.pricePerHour.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <div className="text-center py-8 text-slate-400">
-                    No recent bookings in the last 7 days
+                    No bookings found
                   </div>
                 )
               })()}

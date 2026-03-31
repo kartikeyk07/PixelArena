@@ -60,7 +60,7 @@ export default function AdminGames() {
     if (!price || isNaN(price) || Number(price) <= 0) {
       newErrors.price = "Price must be a positive number"
     } else if (Number(price) > 100) {
-      newErrors.price = "Price cannot exceed $100 per hour"
+      newErrors.price = "Price cannot exceed ₹100 per hour"
     }
 
     if (image && !isValidUrl(image)) {
@@ -177,7 +177,7 @@ export default function AdminGames() {
                 <div className="ml-4">
                   <p className="text-slate-400 text-sm">Avg Price/Hour</p>
                   <p className="text-2xl font-bold text-slate-100">
-                    ${games.length > 0 ? (games.reduce((sum, g) => sum + g.pricePerHour, 0) / games.length).toFixed(2) : '0.00'}
+                    ₹{games.length > 0 ? (games.reduce((sum, g) => sum + g.pricePerHour, 0) / games.length).toFixed(2) : '0.00'}
                   </p>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export default function AdminGames() {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Price per Hour *</label>
                 <input
                   type="number"
-                  placeholder="Price per hour ($0.01 - $100)"
+                  placeholder="Price per hour (₹0.01 - ₹100)"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
@@ -308,7 +308,7 @@ export default function AdminGames() {
                           {getZoneName(game.zoneId)}
                         </Link>
                       </td>
-                      <td className="p-4 text-slate-300">${game.pricePerHour}</td>
+                      <td className="p-4 text-slate-300">₹{game.pricePerHour}</td>
                       <td className="p-4">
                         <button
                           onClick={() => deleteGame(game.id)}

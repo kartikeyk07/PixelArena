@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getMenuByZone } from "@/services/menuService"
-import { FaUtensils, FaTimes, FaDollarSign, FaPlus, FaMinus } from "react-icons/fa"
+import { FaUtensils, FaTimes, FaPlus, FaMinus } from "react-icons/fa"
 
 export default function CafeMenuModal({ isOpen, onClose, zoneId, zoneName, onConfirm, bookingData }) {
   const [menuItems, setMenuItems] = useState([])
@@ -113,9 +113,9 @@ export default function CafeMenuModal({ isOpen, onClose, zoneId, zoneName, onCon
                         {item.name}
                       </h3>
                       <div className="flex items-center gap-1 bg-orange-600/20 px-3 py-1 rounded-lg">
-                        <FaDollarSign className="text-orange-400 text-sm" />
+                        <span className="text-orange-400 text-sm font-semibold">₹</span>
                         <span className="text-orange-400 font-semibold">
-                          ${item.price?.toFixed(2) || "0.00"}
+                          {item.price?.toFixed(2) || "0.00"}
                         </span>
                       </div>
                     </div>
@@ -160,7 +160,7 @@ export default function CafeMenuModal({ isOpen, onClose, zoneId, zoneName, onCon
                   <div className="flex items-center justify-between">
                     <span className="text-slate-100 font-semibold">Cafe Items Total:</span>
                     <span className="text-orange-400 font-bold text-lg">
-                      ${getTotal().toFixed(2)}
+                      ₹{getTotal().toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function CafeMenuModal({ isOpen, onClose, zoneId, zoneName, onCon
                   disabled={Object.keys(selectedItems).length === 0}
                   className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-4 py-3 rounded-lg transition-colors"
                 >
-                  Add to Bill (${getTotal().toFixed(2)})
+                  Add to Bill (₹{getTotal().toFixed(2)})
                 </button>
               </div>
             </>

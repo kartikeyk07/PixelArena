@@ -451,7 +451,7 @@ export default function ZoneDetail() {
                   {games.map(game => (
                     <tr key={game.id} className="border-t border-slate-700 hover:bg-slate-750">
                       <td className="p-4 text-slate-100 font-medium">{game.name}</td>
-                      <td className="p-4 text-slate-300">${game.pricePerHour}</td>
+                      <td className="p-4 text-slate-300">₹{game.pricePerHour}</td>
                       <td className="p-4">
                         <button
                           onClick={() => deleteGame(game.id)}
@@ -545,7 +545,7 @@ export default function ZoneDetail() {
                     <tr key={item.id} className="border-t border-slate-700 hover:bg-slate-750">
                       <td className="p-4 text-slate-100 font-medium">{item.name}</td>
                       <td className="p-4 text-slate-300">{item.category}</td>
-                      <td className="p-4 text-slate-300">${item.price}</td>
+                      <td className="p-4 text-slate-300">₹{item.price}</td>
                       <td className="p-4">
                         <button
                           onClick={() => deleteMenuItem(item.id)}

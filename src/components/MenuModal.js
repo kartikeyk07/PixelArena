@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getMenuByZone } from "@/services/menuService"
-import { FaUtensils, FaTimes, FaDollarSign } from "react-icons/fa"
+import { FaUtensils, FaTimes } from "react-icons/fa"
 
 export default function MenuModal({ isOpen, onClose, zoneId, zoneName }) {
   const [menuItems, setMenuItems] = useState([])
@@ -70,9 +70,9 @@ export default function MenuModal({ isOpen, onClose, zoneId, zoneName }) {
                       {item.name}
                     </h3>
                     <div className="flex items-center gap-1 bg-orange-600/20 px-3 py-1 rounded-lg">
-                      <FaDollarSign className="text-orange-400 text-sm" />
+                      <span className="text-orange-400 text-sm font-semibold">₹</span>
                       <span className="text-orange-400 font-semibold">
-                        ${item.price?.toFixed(2) || "0.00"}
+                        {item.price?.toFixed(2) || "0.00"}
                       </span>
                     </div>
                   </div>
