@@ -5,7 +5,7 @@ import { useState } from "react"
 import BookingModal from "./BookingModal"
 import { FaGamepad } from "react-icons/fa"
 
-export default function GameCard({ game, zoneId, zoneName }) {
+export default function GameCard({ game, zoneId, zoneName, zone }) {
 
   const [open, setOpen] = useState(false)
 
@@ -19,6 +19,7 @@ export default function GameCard({ game, zoneId, zoneName }) {
         {game.image && (
           <img
             src={game.image}
+            alt={game.name}
             className="h-36 w-full object-cover"
           />
         )}
@@ -54,6 +55,7 @@ export default function GameCard({ game, zoneId, zoneName }) {
           game={game}
           zoneId={zoneId}
           zoneName={zoneName}
+          zone={zone}
           close={()=>setOpen(false)}
         />
       )}

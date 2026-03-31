@@ -13,7 +13,7 @@ import MenuCard from "@/components/MenuCard"
 import { FaArrowLeft, FaMapMarkerAlt, FaClock } from "react-icons/fa"
 
 export default function ZoneDetails() {
-  useRouteGuard()
+  const { loading: authLoading } = useRouteGuard()
   const { id } = useParams()
   const router = useRouter()
 
@@ -33,13 +33,23 @@ export default function ZoneDetails() {
       const gamesData = await getGamesByZone(id)
       const menuData = await getMenuByZone(id)
 
-      setGames(gamesData)
+      setGames(gamesData || [])
       setMenu(menuData)
     }
 
     loadData()
 
   }, [id])
+  
+
+  if (authLoading) {
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">
+      <p className="text-slate-400">Checking authentication...</p>
+    </div>
+  )
+}
+
 
   if (!zone) return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex">
@@ -106,8 +116,8 @@ export default function ZoneDetails() {
 
             {games.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {games.map(game => (
-                  <GameCard key={game.id} game={game} zoneId={id} zoneName={zone.name} />
+                {Array.isArray(games) && games.length > 0 && games.map((game) => (
+                  <GameCard key={game.id} game={game} zoneId={id} zoneName={zone.name} zone={zone} />
                 ))}
               </div>
             ) : (

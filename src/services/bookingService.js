@@ -7,7 +7,8 @@ import {
   doc,
   deleteDoc,
   onSnapshot,
-  addDoc
+  addDoc,
+  updateDoc
 } from "firebase/firestore"
 
 export function listenBookings(callback) {
@@ -88,4 +89,9 @@ export async function createBooking(bookingData) {
     ...bookingData,
     createdAt: new Date()
   })
+}
+
+export async function updateBooking(bookingId, updateData) {
+
+  return await updateDoc(doc(db, "bookings", bookingId), updateData)
 }

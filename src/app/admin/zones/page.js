@@ -7,8 +7,11 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
-  doc
+  doc,
+  query,
+  where
 } from "firebase/firestore"
+import toast from "react-hot-toast"
 import { useRouteGuard } from "@/hooks/useRouteGuard"
 import AdminSidebar from "@/components/AdminSidebar"
 import { FaPlus, FaTrash, FaEye, FaMapMarkerAlt, FaImage, FaFileAlt } from "react-icons/fa"
@@ -34,6 +37,7 @@ export default function AdminZones() {
   const [capacity, setCapacity] = useState("")
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
+  const [hasCafe, setHasCafe] = useState(false)
 
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -115,6 +119,7 @@ export default function AdminZones() {
 
         startTime,
         endTime,
+        hasCafe,
 
         createdAt: new Date()
 
@@ -127,6 +132,7 @@ export default function AdminZones() {
       setCapacity("")
       setStartTime("")
       setEndTime("")
+      setHasCafe(false)
       setErrors({})
 
       loadZones()
@@ -149,12 +155,35 @@ export default function AdminZones() {
 
   async function deleteZone(id){
 
-    if(confirm("Delete this zone?")){
+    if(!confirm("Are you sure you want to delete this zone? This action cannot be undone.")){
+      return
+    }
 
-      await deleteDoc(doc(db,"zones",id))
+    const loadingToast = toast.loading("Deleting zone...")
 
+    try {
+      // Delete all games in this zone
+      const gamesSnapshot = await getDocs(collection(db, "zones", id, "games"))
+      for (const gameDoc of gamesSnapshot.docs) {
+        await deleteDoc(doc(db, "zones", id, "games", gameDoc.id))
+      }
+
+      // Delete all cafe items in this zone
+      const cafeSnapshot = await getDocs(collection(db, "zones", id, "cafe"))
+      for (const cafeDoc of cafeSnapshot.docs) {
+        await deleteDoc(doc(db, "zones", id, "cafe", cafeDoc.id))
+      }
+
+      // Delete the zone document
+      await deleteDoc(doc(db, "zones", id))
+
+      toast.dismiss(loadingToast)
+      toast.success("Zone deleted successfully")
       loadZones()
-
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      console.error("Error deleting zone:", error)
+      toast.error(`Failed to delete zone: ${error.message}`)
     }
 
   }
@@ -332,6 +361,17 @@ export default function AdminZones() {
                 onChange={e=>setImage(e.target.value)}
                 className="p-3 bg-slate-700 border border-slate-600 rounded-lg"
               />
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="hasCafe"
+                  checked={hasCafe}
+                  onChange={e=>setHasCafe(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
+                />
+                <label htmlFor="hasCafe" className="text-slate-300">Has Cafe</label>
+              </div>
 
               <textarea
                 placeholder="Description"

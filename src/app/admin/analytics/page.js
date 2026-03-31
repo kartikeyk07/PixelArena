@@ -11,6 +11,7 @@ import {
 import { useRouteGuard } from "@/hooks/useRouteGuard"
 import AdminSidebar from "@/components/AdminSidebar"
 import { FaChartBar, FaUsers, FaGamepad, FaUtensils, FaDollarSign, FaCalendarAlt } from "react-icons/fa"
+import BookingBillModal from "@/components/BookingBillModal"
 
 export default function AdminAnalytics() {
   useRouteGuard(true) // Admin-only route
@@ -20,6 +21,8 @@ export default function AdminAnalytics() {
   const [bookings, setBookings] = useState([])
   const [selectedZone, setSelectedZone] = useState("")
   const [loading, setLoading] = useState(true)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [showBillModal, setShowBillModal] = useState(false)
 
   async function loadData() {
     setLoading(true)
@@ -298,7 +301,14 @@ export default function AdminAnalytics() {
                     const game = games.find(g => g.id === booking.gameId)
                     const zone = game ? zones.find(z => z.id === game.zoneId) : null
                     return (
-                      <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                      <div
+                        key={booking.id}
+                        className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-650 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedBooking(booking)
+                          setShowBillModal(true)
+                        }}
+                      >
                         <div className="flex items-center space-x-4">
                           <div className="p-2 bg-blue-600 rounded-lg">
                             <FaGamepad className="text-white text-sm" />
@@ -333,6 +343,18 @@ export default function AdminAnalytics() {
           </div>
         </div>
       </div>
+
+      {/* Booking Bill Modal */}
+      <BookingBillModal
+        isOpen={showBillModal}
+        onClose={() => {
+          setShowBillModal(false)
+          setSelectedBooking(null)
+        }}
+        booking={selectedBooking}
+        games={games}
+        zones={zones}
+      />
     </div>
   )
 }

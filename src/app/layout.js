@@ -3,7 +3,7 @@ import { Toaster } from "react-hot-toast"
 import { AuthProvider } from "../context/AuthContext"
 
 export const metadata = {
-  title: "Zone Gaming",
+  title: "PixelArena",
   description: "Gaming Zone Booking Platform",
 }
 

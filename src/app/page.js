@@ -66,7 +66,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FaGamepad className="text-purple-500 text-2xl" />
-            <span className="text-2xl font-bold text-slate-100">Zone Gaming</span>
+            <span className="text-2xl font-bold text-slate-100">PixelArena</span>
           </div>
           <div className="flex gap-4">
             <Link href="/login">
@@ -110,7 +110,7 @@ export default function Home() {
                 <div className="h-1 w-12 bg-purple-500 rounded-full" />
               </div>
               <h1 className="text-6xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600">
-                Zone Gaming
+                PixelArena
               </h1>
             </motion.div>
 
@@ -191,7 +191,7 @@ export default function Home() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Why Choose Zone Gaming?</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">Why Choose PixelArena?</h2>
           <p className="text-xl text-slate-400">Discover what makes us the ultimate gaming destination</p>
         </motion.div>
 
@@ -265,7 +265,7 @@ export default function Home() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <FaGamepad className="text-purple-500 text-xl" />
-                <span className="font-bold text-slate-100">Zone Gaming</span>
+                <span className="font-bold text-slate-100">PixelArena</span>
               </div>
               <p className="text-slate-400">The ultimate gaming zone booking platform</p>
             </div>
@@ -282,7 +282,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-slate-700 pt-8 text-center text-slate-500 text-sm">
-            <p>&copy; 2026 Zone Gaming. All rights reserved.</p>
+            <p>&copy; 2026 PixelArena. All rights reserved.</p>
           </div>
         </div>
       </motion.footer> */}
