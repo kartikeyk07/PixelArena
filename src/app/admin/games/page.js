@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore"
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore"
 import { useRouteGuard } from "@/hooks/useRouteGuard"
 import AdminSidebar from "@/components/AdminSidebar"
-import { FaPlus, FaTrash, FaGamepad, FaMapMarkerAlt, FaDollarSign } from "react-icons/fa"
+import { FaPlus, FaTrash, FaGamepad, FaMapMarkerAlt, FaDollarSign, FaEdit } from "react-icons/fa"
 import Link from "next/link"
 
 export default function AdminGames() {
@@ -16,10 +16,12 @@ export default function AdminGames() {
   const [name, setName] = useState("")
   const [zoneId, setZoneId] = useState("")
   const [price, setPrice] = useState("")
+  const [maxPlayers, setMaxPlayers] = useState(4)
   const [image, setImage] = useState("")
   const [description, setDescription] = useState("")
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingGameId, setEditingGameId] = useState(null)
 
   async function loadZones() {
     const snapshot = await getDocs(collection(db, "zones"))
@@ -63,6 +65,14 @@ export default function AdminGames() {
       newErrors.price = "Price cannot exceed ₹100 per hour"
     }
 
+    if (!maxPlayers || isNaN(maxPlayers) || Number(maxPlayers) <= 0) {
+      newErrors.maxPlayers = "Max players must be at least 1"
+    } else if (!Number.isInteger(Number(maxPlayers))) {
+      newErrors.maxPlayers = "Max players must be a whole number"
+    } else if (Number(maxPlayers) > 16) {
+      newErrors.maxPlayers = "Max players cannot exceed 16"
+    }
+
     if (image && !isValidUrl(image)) {
       newErrors.image = "Please enter a valid image URL"
     }
@@ -84,7 +94,39 @@ export default function AdminGames() {
     }
   }
 
-  async function createGame(e) {
+  async function deleteGame(id) {
+    if (confirm("Are you sure you want to delete this game?")) {
+      await deleteDoc(doc(db, "games", id))
+      if (editingGameId === id) {
+        cancelEdit()
+      }
+      loadGames()
+    }
+  }
+
+  function startEditGame(game) {
+    setEditingGameId(game.id)
+    setName(game.name || "")
+    setZoneId(game.zoneId || "")
+    setPrice(game.pricePerHour?.toString() || "")
+    setMaxPlayers(game.maxPlayers ?? 4)
+    setImage(game.image || "")
+    setDescription(game.description || "")
+    setErrors({})
+  }
+
+  function cancelEdit() {
+    setEditingGameId(null)
+    setName("")
+    setZoneId("")
+    setPrice("")
+    setMaxPlayers(4)
+    setImage("")
+    setDescription("")
+    setErrors({})
+  }
+
+  async function saveGame(e) {
     e.preventDefault()
 
     if (!validateForm()) {
@@ -94,36 +136,34 @@ export default function AdminGames() {
     setIsSubmitting(true)
 
     try {
-      await addDoc(collection(db, "games"), {
-        name: name.trim(),
-        zoneId,
-        pricePerHour: Number(price),
-        image: image.trim(),
-        description: description.trim(),
-        createdAt: new Date()
-      })
+      if (editingGameId) {
+        await updateDoc(doc(db, "games", editingGameId), {
+          name: name.trim(),
+          zoneId,
+          pricePerHour: Number(price),
+          maxPlayers: Number(maxPlayers),
+          image: image.trim(),
+          description: description.trim()
+        })
+      } else {
+        await addDoc(collection(db, "games"), {
+          name: name.trim(),
+          zoneId,
+          pricePerHour: Number(price),
+          maxPlayers: Number(maxPlayers),
+          image: image.trim(),
+          description: description.trim(),
+          createdAt: new Date()
+        })
+      }
 
-      // Reset form
-      setName("")
-      setZoneId("")
-      setPrice("")
-      setImage("")
-      setDescription("")
-      setErrors({})
-
+      cancelEdit()
       loadGames()
     } catch (error) {
-      console.error("Error creating game:", error)
-      setErrors({ submit: "Failed to create game. Please try again." })
+      console.error("Error saving game:", error)
+      setErrors({ submit: "Failed to save game. Please try again." })
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  async function deleteGame(id) {
-    if (confirm("Are you sure you want to delete this game?")) {
-      await deleteDoc(doc(db, "games", id))
-      loadGames()
     }
   }
 
@@ -186,13 +226,15 @@ export default function AdminGames() {
 
           {/* Create Game Form */}
           <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-8">
-            <h2 className="text-xl font-semibold text-slate-100 mb-6">Add New Game</h2>
+            <h2 className="text-xl font-semibold text-slate-100 mb-6">
+              {editingGameId ? "Edit Game" : "Add New Game"}
+            </h2>
             {errors.submit && (
               <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
                 {errors.submit}
               </div>
             )}
-            <form onSubmit={createGame} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <form onSubmit={saveGame} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Game Name *</label>
                 <input
@@ -243,6 +285,23 @@ export default function AdminGames() {
                 {errors.price && <p className="text-red-400 text-sm mt-1">{errors.price}</p>}
               </div>
               <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Max Players *</label>
+                <input
+                  type="number"
+                  placeholder="Max players per booking"
+                  value={maxPlayers}
+                  onChange={(e) => setMaxPlayers(e.target.value)}
+                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    errors.maxPlayers ? 'border-red-500' : 'border-slate-600'
+                  }`}
+                  min="1"
+                  max="16"
+                  step="1"
+                  required
+                />
+                {errors.maxPlayers && <p className="text-red-400 text-sm mt-1">{errors.maxPlayers}</p>}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
                 <input
                   placeholder="https://example.com/image.jpg"
@@ -269,14 +328,25 @@ export default function AdminGames() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2 invisible">Submit</label>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  <FaPlus />
-                  {isSubmitting ? "Adding Game..." : "Add Game"}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    <FaPlus />
+                    {isSubmitting ? (editingGameId ? "Saving..." : "Adding Game...") : (editingGameId ? "Save Changes" : "Add Game")}
+                  </button>
+                  {editingGameId && (
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 p-3 rounded-lg border border-slate-600 transition-colors duration-200"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </div>
@@ -293,6 +363,7 @@ export default function AdminGames() {
                     <th className="p-4 text-left text-slate-300 font-medium">Game Name</th>
                     <th className="p-4 text-left text-slate-300 font-medium">Zone</th>
                     <th className="p-4 text-left text-slate-300 font-medium">Price/Hour</th>
+                    <th className="p-4 text-left text-slate-300 font-medium">Max Players</th>
                     <th className="p-4 text-left text-slate-300 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -309,7 +380,15 @@ export default function AdminGames() {
                         </Link>
                       </td>
                       <td className="p-4 text-slate-300">₹{game.pricePerHour}</td>
-                      <td className="p-4">
+                      <td className="p-4 text-slate-300">{game.maxPlayers ?? '—'}</td>
+                      <td className="p-4 flex gap-3">
+                        <button
+                          onClick={() => startEditGame(game)}
+                          className="text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center gap-2"
+                        >
+                          <FaEdit />
+                          Edit
+                        </button>
                         <button
                           onClick={() => deleteGame(game.id)}
                           className="text-red-400 hover:text-red-300 transition-colors duration-200 flex items-center gap-2"

@@ -49,8 +49,10 @@ export default function ZoneDetail() {
   // add‑game form
   const [gameName, setGameName] = useState("");
   const [gamePrice, setGamePrice] = useState("");
+  const [gameMaxPlayers, setGameMaxPlayers] = useState(4);
   const [gameImage, setGameImage] = useState("");
   const [gameDescription, setGameDescription] = useState("");
+  const [editingGameId, setEditingGameId] = useState(null);
 
   // add‑menu‑item form
   const [menuName, setMenuName] = useState("");
@@ -107,20 +109,53 @@ export default function ZoneDetail() {
     }
   }, [zoneId])
 
-  async function addGame(e) {
-    e.preventDefault()
-    await addDoc(collection(db, "games"), {
-      name: gameName,
-      zoneId,
-      pricePerHour: Number(gamePrice),
-      image: gameImage,
-      description: gameDescription,
-      createdAt: new Date()
-    })
+  function resetGameForm() {
     setGameName("")
     setGamePrice("")
+    setGameMaxPlayers(4)
     setGameImage("")
     setGameDescription("")
+    setEditingGameId(null)
+  }
+
+  function startEditGame(game) {
+    setEditingGameId(game.id)
+    setGameName(game.name || "")
+    setGamePrice(game.pricePerHour?.toString() || "")
+    setGameMaxPlayers(game.maxPlayers ?? 4)
+    setGameImage(game.image || "")
+    setGameDescription(game.description || "")
+  }
+
+  function cancelGameEdit() {
+    resetGameForm()
+  }
+
+  async function saveGame(e) {
+    e.preventDefault()
+
+    if (editingGameId) {
+      await updateDoc(doc(db, "games", editingGameId), {
+        name: gameName,
+        zoneId,
+        pricePerHour: Number(gamePrice),
+        maxPlayers: Number(gameMaxPlayers),
+        image: gameImage,
+        description: gameDescription
+      })
+    } else {
+      await addDoc(collection(db, "games"), {
+        name: gameName,
+        zoneId,
+        pricePerHour: Number(gamePrice),
+        maxPlayers: Number(gameMaxPlayers),
+        image: gameImage,
+        description: gameDescription,
+        createdAt: new Date()
+      })
+    }
+
+    resetGameForm()
     loadZoneData()
   }
 
@@ -383,55 +418,78 @@ export default function ZoneDetail() {
 
           {/* Add Game Form */}
           <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-8">
-            <h2 className="text-xl font-semibold text-slate-100 mb-6">Add Game to {zone.name}</h2>
-            <form onSubmit={addGame} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Game Name</label>
-                <input
-                  placeholder="Game Name"
-                  value={gameName}
-                  onChange={(e) => setGameName(e.target.value)}
-                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
+                <h2 className="text-xl font-semibold text-slate-100 mb-6">
+                  {editingGameId ? `Edit Game in ${zone.name}` : `Add Game to ${zone.name}`}
+                </h2>
+                <form onSubmit={saveGame} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Game Name</label>
+                    <input
+                      placeholder="Game Name"
+                      value={gameName}
+                      onChange={(e) => setGameName(e.target.value)}
+                      className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Price per Hour</label>
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      value={gamePrice}
+                      onChange={(e) => setGamePrice(e.target.value)}
+                      className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Max Players</label>
+                    <input
+                      type="number"
+                      placeholder="Max players"
+                      value={gameMaxPlayers}
+                      onChange={(e) => setGameMaxPlayers(e.target.value)}
+                      min="1"
+                      className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
+                    <input
+                      placeholder="Image URL"
+                      value={gameImage}
+                      onChange={(e) => setGameImage(e.target.value)}
+                      className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+                    <input
+                      placeholder="Game description"
+                      value={gameDescription}
+                      onChange={(e) => setGameDescription(e.target.value)}
+                      className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2 lg:col-span-4 flex flex-col gap-3">
+                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2">
+                      <FaPlus />
+                      {editingGameId ? 'Save Game' : 'Add Game'}
+                    </button>
+                    {editingGameId && (
+                      <button
+                        type="button"
+                        onClick={cancelGameEdit}
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 p-3 rounded-lg border border-slate-600 transition-colors duration-200"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Price per Hour</label>
-                <input
-                  type="number"
-                  placeholder="Price"
-                  value={gamePrice}
-                  onChange={(e) => setGamePrice(e.target.value)}
-                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
-                <input
-                  placeholder="Image URL"
-                  value={gameImage}
-                  onChange={(e) => setGameImage(e.target.value)}
-                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
-                <input
-                  placeholder="Game description"
-                  value={gameDescription}
-                  onChange={(e) => setGameDescription(e.target.value)}
-                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div className="md:col-span-2 lg:col-span-4">
-                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2">
-                  <FaPlus />
-                  Add Game
-                </button>
-              </div>
-            </form>
-          </div>
 
           {/* Games List */}
           <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden mb-8">
@@ -444,6 +502,7 @@ export default function ZoneDetail() {
                   <tr>
                     <th className="p-4 text-left text-slate-300 font-medium">Game Name</th>
                     <th className="p-4 text-left text-slate-300 font-medium">Price/Hour</th>
+                    <th className="p-4 text-left text-slate-300 font-medium">Max Players</th>
                     <th className="p-4 text-left text-slate-300 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -452,7 +511,15 @@ export default function ZoneDetail() {
                     <tr key={game.id} className="border-t border-slate-700 hover:bg-slate-750">
                       <td className="p-4 text-slate-100 font-medium">{game.name}</td>
                       <td className="p-4 text-slate-300">₹{game.pricePerHour}</td>
-                      <td className="p-4">
+                      <td className="p-4 text-slate-300">{game.maxPlayers ?? '—'}</td>
+                      <td className="p-4 flex gap-3">
+                        <button
+                          onClick={() => startEditGame(game)}
+                          className="text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center gap-2"
+                        >
+                          <FaEdit />
+                          Edit
+                        </button>
                         <button
                           onClick={() => deleteGame(game.id)}
                           className="text-red-400 hover:text-red-300 transition-colors duration-200 flex items-center gap-2"

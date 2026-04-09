@@ -1,17 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-
-    
     // Helper function to check if user is admin
     function isAdmin() {
-      return request.auth != null && 
-             request.auth.token.email == 'kongekartikey007@gmail.com';
+      return request.auth.token.email == 'kongekartikey007@gmail.com';
     }
-    
+
     // Helper function to check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
+    // Helper function to validate integer-like numbers
+    function isWholeNumber(value) {
+      return (value is int || value is float) && value % 1 == 0;
+    }
+
+    function isPositiveWholeNumber(value) {
+      return isWholeNumber(value) && value > 0;
+    }
+
     // Users collection
     match /users/{userId} {
       // Users can read/write their own document
@@ -19,49 +28,93 @@
       // Admins can read all user documents
       allow read: if isAdmin();
     }
-    
+
     // Bookings collection
     match /bookings/{bookingId} {
-      // Authenticated users can read all bookings (to check availability)
+      // Users can read all bookings (to check availability) but only see their own full details via app logic
       allow read: if isAuthenticated();
-      // Users can create bookings (with required fields)
-      allow create: if isAuthenticated() && 
+      // Users can create bookings (with required fields: userId, gameId, slot, date, zoneId, zoneName, numberOfPlayers)
+      allow create: if isAuthenticated() &&
                         request.auth.uid == request.resource.data.userId &&
                         request.resource.data.gameId != null &&
                         request.resource.data.slot != null &&
                         request.resource.data.date != null &&
-                        request.resource.data.zoneId != null;
-      // Users can update/delete their own bookings, admins can do anything
-      allow update, delete: if isAuthenticated() && 
-                               (request.auth.uid == resource.data.userId || isAdmin());
+                        request.resource.data.zoneId != null &&
+                        request.resource.data.zoneName != null &&
+                        request.resource.data.numberOfPlayers != null &&
+                        isPositiveWholeNumber(request.resource.data.numberOfPlayers);
+      // Users can update their own bookings (for adding menu items after booking)
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      // Users can update/delete their own bookings
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
     }
-    
-    // Zones collection (public read, admin write)
+
+    // Zones collection (read-only for users, admin can manage)
     match /zones/{zoneId} {
-      // Anyone can read zones for browsing
-      allow read: if true;
-      // Only admins can create/update/delete zones
-      allow create, update, delete: if isAdmin() &&
-                                       request.resource.data.name != null &&
-                                       request.resource.data.location != null;
-      
+      // Anyone can read zones
+      allow read: if isAuthenticated();
+      // Only admins can write (requires: name, location)
+      allow write: if isAdmin() &&
+                        request.resource.data.name != null &&
+                        request.resource.data.location != null;
+
       // Sub-collection: games within zones
       match /games/{gameId} {
-        allow read: if true;
-        allow create, update, delete: if isAdmin() &&
-                                         request.resource.data.name != null &&
-                                         request.resource.data.pricePerHour != null;
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() &&
+                          request.resource.data.name != null &&
+                          request.resource.data.pricePerHour != null &&
+                          request.resource.data.maxPlayers != null &&
+                          isPositiveWholeNumber(request.resource.data.maxPlayers) &&
+                          request.resource.data.maxPlayers <= 100;
       }
-      
-      // Sub-collection: cafe items within zones
-      match /cafe/{itemId} {
-        allow read: if true;
-        allow create, update, delete: if isAdmin() &&
-                                         request.resource.data.name != null &&
-                                         request.resource.data.price != null;
+
+      // Sub-collection: menu items within zones
+      match /menu/{menuId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() &&
+                          request.resource.data.name != null &&
+                          request.resource.data.price != null;
       }
     }
-    
+
+    // Games collection (read-only for users, admin can manage)
+    match /games/{gameId} {
+      allow read: if isAuthenticated();
+      // Admins can create/update games (requires: name, zoneId, pricePerHour, maxPlayers)
+      allow write: if isAdmin() &&
+                        request.resource.data.name != null &&
+                        request.resource.data.zoneId != null &&
+                        request.resource.data.pricePerHour != null &&
+                        request.resource.data.maxPlayers != null &&
+                        isPositiveWholeNumber(request.resource.data.maxPlayers) &&
+                        request.resource.data.maxPlayers <= 100;
+    }
+
+    // Menu collection (read-only for users, admin can manage)
+    // Users can view menu items including in booking modals
+    match /menu/{menuId} {
+      allow read: if isAuthenticated();
+      // Admins can create/update menu items (requires: name, price, zoneId)
+      allow write: if isAdmin() &&
+                        request.resource.data.name != null &&
+                        request.resource.data.price != null &&
+                        request.resource.data.zoneId != null;
+    }
+
+    // User stats collection
+    match /userStats/{userId} {
+      // Users can read/write their own stats
+      allow read, write: if request.auth.uid == userId;
+      // Admins can read all stats
+      allow read: if isAdmin();
+    }
+
+    // Analytics data (admin only)
+    match /analytics/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

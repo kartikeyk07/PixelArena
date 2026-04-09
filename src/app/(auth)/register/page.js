@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createUserWithEmailAndPassword } from "firebase/auth"
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
@@ -13,10 +13,17 @@ export default function Register() {
   const { user, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/dashboard")
+    // Sign out any existing user when register page loads
+    const signOutExistingUser = async () => {
+      try {
+        await signOut(auth)
+      } catch (error) {
+        console.error("Error signing out:", error)
+      }
     }
-  }, [user, loading, router])
+
+    signOutExistingUser()
+  }, [])
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")

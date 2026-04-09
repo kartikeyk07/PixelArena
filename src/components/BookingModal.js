@@ -406,6 +406,22 @@ export default function BookingModal({
 
   const [bookedSlots, setBookedSlots] = useState([])
   const [selectedSlots, setSelectedSlots] = useState([])
+  const [numberOfPlayers, setNumberOfPlayers] = useState(1)
+
+  const rawMaxPlayers = game?.maxPlayers
+  const maxPlayers = Number.isInteger(rawMaxPlayers)
+    ? rawMaxPlayers
+    : Number.isInteger(Number(rawMaxPlayers))
+      ? Number(rawMaxPlayers)
+      : null
+
+  const playerCountValid = maxPlayers !== null && numberOfPlayers > 0 && numberOfPlayers <= maxPlayers
+  const canBook =
+    !loading &&
+    date &&
+    selectedSlots.length > 0 &&
+    payment &&
+    playerCountValid
 
   // ✅ Single correct useEffect
   useEffect(() => {
@@ -450,12 +466,52 @@ export default function BookingModal({
   }
 
   async function handleBooking() {
+    if (!user || !user.uid) {
+      return toast.error("You must be logged in to book.")
+    }
+
     if (!date || selectedSlots.length === 0 || !payment) {
       return toast.error("Select date, slots and payment")
     }
 
-    if (!zoneId) {
-      return toast.error("Zone ID missing")
+    if (maxPlayers === null) {
+      return toast.error("Booking failed: this game has no max player limit configured.")
+    }
+
+    if (!playerCountValid) {
+      return toast.error("Player limit exceeded for this game.")
+    }
+
+    const bookingZoneId = zoneId || game.zoneId
+    const bookingZoneName = zoneName || zone?.name || game.zoneName || ""
+    const bookingGameId = game.id || game.gameId
+    const bookingNumberOfPlayers = Number(numberOfPlayers)
+
+    const bookingPayload = {
+      userId: user.uid,
+      userEmail: user.email,
+      zoneId: bookingZoneId,
+      zoneName: bookingZoneName,
+      gameId: bookingGameId,
+      gameName: game.name,
+      date,
+      numberOfPlayers: bookingNumberOfPlayers,
+      paymentMethod: payment,
+      status: "confirmed",
+      createdAt: new Date()
+    }
+
+    console.log("Booking payload", {
+      bookingPayload,
+      selectedSlots,
+      authUid: user.uid,
+      authEmail: user.email,
+      maxPlayers,
+      playerCountValid
+    })
+
+    if (!bookingZoneId || !bookingZoneName || !bookingGameId) {
+      return toast.error("Booking failed: missing zone or game identifiers.")
     }
 
     setLoading(true)
@@ -476,17 +532,29 @@ export default function BookingModal({
         }
       }
 
+      const bookingZoneId = zoneId || game.zoneId
+      const bookingZoneName = zoneName || zone?.name || game.zoneName || ""
+      const bookingGameId = game.id || game.gameId
+
+      if (!bookingZoneId || !bookingZoneName || !bookingGameId) {
+        toast.error("Booking failed: missing game or zone data.")
+        setLoading(false)
+        setConfirmationState(null)
+        return
+      }
+
       const refs = await Promise.all(
         selectedSlots.map(slot =>
           createBooking({
             userId: user.uid,
             userEmail: user.email,
-            zoneId,
-            zoneName,
-            gameId: game.id,
+            zoneId: bookingZoneId,
+            zoneName: bookingZoneName,
+            gameId: bookingGameId,
             gameName: game.name,
             date,
             slot,
+            numberOfPlayers: Number(numberOfPlayers),
             paymentMethod: payment,
             status: "confirmed",
             createdAt: new Date()
@@ -508,7 +576,8 @@ export default function BookingModal({
         close()
       }
     } catch (err) {
-      toast.error("Booking failed")
+      console.error("Booking error:", err)
+      toast.error(`Booking failed: ${err.message || "Please try again."}`)
       setLoading(false)
       setConfirmationState(null)
     }
@@ -619,6 +688,36 @@ return (
           {/* Payment */}
           <div className="mb-4">
             <label className="block text-sm text-slate-300 mb-1">
+              Number of Players
+            </label>
+            {maxPlayers !== null ? (
+              <>
+                <select
+                  value={numberOfPlayers}
+                  onChange={(e) => setNumberOfPlayers(Number(e.target.value))}
+                  className={`w-full p-2 bg-slate-800 border rounded text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none ${
+                    playerCountValid ? "border-slate-700" : "border-red-500"
+                  }`}
+                >
+                  {Array.from({ length: maxPlayers }, (_, idx) => idx + 1).map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-slate-400 text-sm mt-2">
+                  Max players for this game: {maxPlayers}. {playerCountValid ? `You can book ${numberOfPlayers} player${numberOfPlayers === 1 ? "" : "s"}.` : "Player limit exceeded."}
+                </p>
+              </>
+            ) : (
+              <p className="text-red-400 text-sm mt-2">
+                This game has no max players configured yet. Ask the admin to update the game.
+              </p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm text-slate-300 mb-1">
               Payment Method
             </label>
             <select
@@ -635,7 +734,7 @@ return (
           {/* Button */}
           <button
             onClick={handleBooking}
-            disabled={loading}
+            disabled={!canBook}
             className="w-full mt-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
           >
             {loading ? "Processing..." : "Confirm Booking"}

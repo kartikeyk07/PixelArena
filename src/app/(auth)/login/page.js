@@ -1,10 +1,11 @@
 "use client"
 
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
 import { doc, getDoc } from "firebase/firestore"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
 import { useAuth } from "@/context/AuthContext"
 
 export default function Login() {
@@ -12,10 +13,17 @@ export default function Login() {
   const { user, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/dashboard")
+    // Sign out any existing user when login page loads
+    const signOutExistingUser = async () => {
+      try {
+        await signOut(auth)
+      } catch (error) {
+        console.error("Error signing out:", error)
+      }
     }
-  }, [user, loading, router])
+
+    signOutExistingUser()
+  }, [])
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -24,29 +32,37 @@ export default function Login() {
 
     e.preventDefault()
 
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    )
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      )
 
-    const user = userCredential.user
+      const user = userCredential.user
 
-    const docRef = doc(db, "users", user.uid)
-    const docSnap = await getDoc(docRef)
+      const docRef = doc(db, "users", user.uid)
+      const docSnap = await getDoc(docRef)
 
-    const role = docSnap.data().role
+      const role = docSnap.data().role
 
-    if (role === "admin") {
-
-      router.push("/admin/dashboard")
-
-    } else {
-
-      router.push("/dashboard")
-
+      if (role === "admin") {
+        router.push("/admin/dashboard")
+      } else {
+        router.push("/dashboard")
+      }
+    } catch (err) {
+      console.error("Login failed:", err)
+      const code = err?.code || ""
+      const message =
+        code === "auth/invalid-email" ||
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found" ||
+        code === "auth/invalid-credential"
+          ? "Invalid email or password"
+          : "Unable to login. Please try again."
+      toast.error(message)
     }
-
   }
 
   return (

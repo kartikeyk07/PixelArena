@@ -4,8 +4,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouteGuard } from "@/hooks/useRouteGuard"
 import UserSidebar from "@/components/UserSidebar"
 import { useEffect, useState } from "react"
-import { db } from "@/lib/firebase"
-import { doc, getDoc } from "firebase/firestore"
+import { getUserBookings } from "@/services/bookingService"
 import { FaUser, FaCalendarAlt, FaClock, FaTrophy, FaGamepad } from "react-icons/fa"
 
 export default function ProfilePage() {
@@ -19,18 +18,28 @@ export default function ProfilePage() {
       if (!user) return
 
       try {
-        const ref = doc(db, "userStats", user.uid)
-        const snap = await getDoc(ref)
-        if (snap.exists()) {
-          setStats(snap.data())
-        } else {
-          // Default stats if none exist
-          setStats({
-            totalBookings: 0,
-            totalHours: 0,
-            favoriteGame: "None"
-          })
-        }
+        const bookings = await getUserBookings(user.uid)
+        const totalBookings = bookings.length
+        const totalHours = bookings.reduce(
+          (sum, booking) => sum + (booking.duration ?? 1),
+          0
+        )
+
+        const gameCounts = bookings.reduce((counts, booking) => {
+          const name = booking.gameName || booking.game || "None"
+          counts[name] = (counts[name] || 0) + 1
+          return counts
+        }, {})
+
+        const favoriteGame = Object.entries(gameCounts).sort(
+          ([, aCount], [, bCount]) => bCount - aCount
+        )[0]?.[0] || "None"
+
+        setStats({
+          totalBookings,
+          totalHours,
+          favoriteGame
+        })
       } catch (error) {
         console.error("Error loading stats:", error)
         setStats({
