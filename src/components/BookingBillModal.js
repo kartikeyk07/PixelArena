@@ -77,7 +77,7 @@ export default function BookingBillModal({ isOpen, onClose, booking, games, zone
                   <p className="text-slate-100 font-medium">
                     {booking.createdAt?.toDate?.()?.toLocaleDateString() || 'Unknown Date'}
                   </p>
-                  <p className="text-slate-400 text-sm">Booking Date</p>
+                  <p className="text-slate-400 text-sm">Booking Date1</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">

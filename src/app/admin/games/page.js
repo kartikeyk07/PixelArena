@@ -1,139 +1,180 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore"
-import { useRouteGuard } from "@/hooks/useRouteGuard"
-import AdminSidebar from "@/components/AdminSidebar"
-import { FaPlus, FaTrash, FaGamepad, FaMapMarkerAlt, FaDollarSign, FaEdit } from "react-icons/fa"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { toast } from "react-hot-toast";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { useRouteGuard } from "@/hooks/useRouteGuard";
+import AdminSidebar from "@/components/AdminSidebar";
+import {
+  FaPlus,
+  FaTrash,
+  FaGamepad,
+  FaMapMarkerAlt,
+  FaDollarSign,
+  FaEdit,
+} from "react-icons/fa";
+import Link from "next/link";
 
 export default function AdminGames() {
-  useRouteGuard(true) // Admin-only route
-  
-  const [zones, setZones] = useState([])
-  const [games, setGames] = useState([])
-  const [name, setName] = useState("")
-  const [zoneId, setZoneId] = useState("")
-  const [price, setPrice] = useState("")
-  const [maxPlayers, setMaxPlayers] = useState(4)
-  const [image, setImage] = useState("")
-  const [description, setDescription] = useState("")
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [editingGameId, setEditingGameId] = useState(null)
+  useRouteGuard(true); // Admin-only route
+
+  const [zones, setZones] = useState([]);
+  const [games, setGames] = useState([]);
+  const [name, setName] = useState("");
+  const [zoneId, setZoneId] = useState("");
+  const [price, setPrice] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [image, setImage] = useState("");
+  const [description, setDescription] = useState("");
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingGameId, setEditingGameId] = useState(null);
 
   async function loadZones() {
-    const snapshot = await getDocs(collection(db, "zones"))
-    const data = snapshot.docs.map(doc => ({
+    const snapshot = await getDocs(collection(db, "zones"));
+    const data = snapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
-    }))
-    setZones(data)
+      ...doc.data(),
+    }));
+    setZones(data);
   }
 
   async function loadGames() {
-    const snapshot = await getDocs(collection(db, "games"))
-    const data = snapshot.docs.map(doc => ({
+    const snapshot = await getDocs(collection(db, "games"));
+    const data = snapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
-    }))
-    setGames(data)
+      ...doc.data(),
+    }));
+    setGames(data);
   }
 
   useEffect(() => {
-    loadZones()
-    loadGames()
-  }, [])
+    loadZones();
+    loadGames();
+  }, []);
 
   function validateForm() {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!name.trim()) {
-      newErrors.name = "Game name is required"
+      newErrors.name = "Game name is required";
     } else if (name.trim().length < 2) {
-      newErrors.name = "Game name must be at least 2 characters"
+      newErrors.name = "Game name must be at least 2 characters";
     }
 
     if (!zoneId) {
-      newErrors.zoneId = "Please select a zone"
+      newErrors.zoneId = "Please select a zone";
     }
 
     if (!price || isNaN(price) || Number(price) <= 0) {
-      newErrors.price = "Price must be a positive number"
+      newErrors.price = "Price must be a positive number";
     } else if (Number(price) > 100) {
-      newErrors.price = "Price cannot exceed ₹100 per hour"
+      newErrors.price = "Price cannot exceed ₹100 per hour";
     }
 
     if (!maxPlayers || isNaN(maxPlayers) || Number(maxPlayers) <= 0) {
-      newErrors.maxPlayers = "Max players must be at least 1"
+      newErrors.maxPlayers = "Max players must be at least 1";
     } else if (!Number.isInteger(Number(maxPlayers))) {
-      newErrors.maxPlayers = "Max players must be a whole number"
+      newErrors.maxPlayers = "Max players must be a whole number";
     } else if (Number(maxPlayers) > 16) {
-      newErrors.maxPlayers = "Max players cannot exceed 16"
+      newErrors.maxPlayers = "Max players cannot exceed 16";
     }
 
     if (image && !isValidUrl(image)) {
-      newErrors.image = "Please enter a valid image URL"
+      newErrors.image = "Please enter a valid image URL";
     }
 
     if (description && description.length > 300) {
-      newErrors.description = "Description must be less than 300 characters"
+      newErrors.description = "Description must be less than 300 characters";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   }
 
   function isValidUrl(string) {
     try {
-      new URL(string)
-      return true
+      new URL(string);
+      return true;
     } catch (_) {
-      return false
+      return false;
     }
   }
 
   async function deleteGame(id) {
-    if (confirm("Are you sure you want to delete this game?")) {
-      await deleteDoc(doc(db, "games", id))
+    if (!confirm("Are you sure you want to delete this game?")) {
+      return;
+    }
+
+    const loadingToast = toast.loading("Deleting game...");
+
+    try {
+      await deleteDoc(doc(db, "games", id));
+
       if (editingGameId === id) {
-        cancelEdit()
+        cancelEdit();
       }
-      loadGames()
+
+      toast.dismiss(loadingToast);
+
+      toast.success("Game deleted successfully");
+
+      loadGames();
+    } catch (error) {
+      toast.dismiss(loadingToast);
+
+      console.error("Error deleting game:", error);
+
+      toast.error("Failed to delete game");
     }
   }
-
+  const [isFormOpen, setIsFormOpen] = useState(false);
   function startEditGame(game) {
-    setEditingGameId(game.id)
-    setName(game.name || "")
-    setZoneId(game.zoneId || "")
-    setPrice(game.pricePerHour?.toString() || "")
-    setMaxPlayers(game.maxPlayers ?? 4)
-    setImage(game.image || "")
-    setDescription(game.description || "")
-    setErrors({})
+    setIsFormOpen(true);
+
+    setEditingGameId(game.id);
+
+    setName(game.name || "");
+    setZoneId(game.zoneId || "");
+    setPrice(game.pricePerHour?.toString() || "");
+    setMaxPlayers(game.maxPlayers ?? 4);
+    setImage(game.image || "");
+    setDescription(game.description || "");
+
+    setErrors({});
   }
 
   function cancelEdit() {
-    setEditingGameId(null)
-    setName("")
-    setZoneId("")
-    setPrice("")
-    setMaxPlayers(4)
-    setImage("")
-    setDescription("")
-    setErrors({})
+    setEditingGameId(null);
+
+    setName("");
+    setZoneId("");
+    setPrice("");
+    setMaxPlayers(4);
+    setImage("");
+    setDescription("");
+
+    setErrors({});
+
+    setIsFormOpen(false);
   }
 
   async function saveGame(e) {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
       if (editingGameId) {
@@ -143,8 +184,8 @@ export default function AdminGames() {
           pricePerHour: Number(price),
           maxPlayers: Number(maxPlayers),
           image: image.trim(),
-          description: description.trim()
-        })
+          description: description.trim(),
+        });
       } else {
         await addDoc(collection(db, "games"), {
           name: name.trim(),
@@ -153,24 +194,24 @@ export default function AdminGames() {
           maxPlayers: Number(maxPlayers),
           image: image.trim(),
           description: description.trim(),
-          createdAt: new Date()
-        })
+          createdAt: new Date(),
+        });
       }
 
-      cancelEdit()
-      loadGames()
+      cancelEdit();
+      loadGames();
     } catch (error) {
-      console.error("Error saving game:", error)
-      setErrors({ submit: "Failed to save game. Please try again." })
+      console.error("Error saving game:", error);
+      setErrors({ submit: "Failed to save game. Please try again." });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   const getZoneName = (zoneId) => {
-    const zone = zones.find(z => z.id === zoneId)
-    return zone ? zone.name : 'Unknown Zone'
-  }
+    const zone = zones.find((z) => z.id === zoneId);
+    return zone ? zone.name : "Unknown Zone";
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex">
@@ -192,7 +233,9 @@ export default function AdminGames() {
                 </div>
                 <div className="ml-4">
                   <p className="text-slate-400 text-sm">Total Games</p>
-                  <p className="text-2xl font-bold text-slate-100">{games.length}</p>
+                  <p className="text-2xl font-bold text-slate-100">
+                    {games.length}
+                  </p>
                 </div>
               </div>
             </div>
@@ -204,7 +247,7 @@ export default function AdminGames() {
                 <div className="ml-4">
                   <p className="text-slate-400 text-sm">Zones with Games</p>
                   <p className="text-2xl font-bold text-slate-100">
-                    {new Set(games.map(g => g.zoneId)).size}
+                    {new Set(games.map((g) => g.zoneId)).size}
                   </p>
                 </div>
               </div>
@@ -217,7 +260,13 @@ export default function AdminGames() {
                 <div className="ml-4">
                   <p className="text-slate-400 text-sm">Avg Price/Hour</p>
                   <p className="text-2xl font-bold text-slate-100">
-                    ₹{games.length > 0 ? (games.reduce((sum, g) => sum + g.pricePerHour, 0) / games.length).toFixed(2) : '0.00'}
+                    ₹
+                    {games.length > 0
+                      ? (
+                          games.reduce((sum, g) => sum + g.pricePerHour, 0) /
+                          games.length
+                        ).toFixed(2)
+                      : "0.00"}
                   </p>
                 </div>
               </div>
@@ -225,152 +274,247 @@ export default function AdminGames() {
           </div>
 
           {/* Create Game Form */}
-          <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-8">
-            <h2 className="text-xl font-semibold text-slate-100 mb-6">
-              {editingGameId ? "Edit Game" : "Add New Game"}
-            </h2>
-            {errors.submit && (
-              <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
-                {errors.submit}
+          {/* Create Game Dropdown Form */}
+
+          <details
+            open={isFormOpen}
+            onToggle={(e) => setIsFormOpen(e.target.open)}
+            className="bg-slate-800 rounded-lg border border-slate-700 mb-8 overflow-hidden group"
+          >
+            <summary className="flex items-center justify-between cursor-pointer p-6 text-xl font-semibold text-slate-100 list-none hover:bg-slate-700 transition">
+              <div className="flex items-center gap-3">
+                <FaPlus className="text-blue-400" />
+                {editingGameId ? "Edit Game" : "Add New Game"}
               </div>
-            )}
-            <form onSubmit={saveGame} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Game Name *</label>
-                <input
-                  placeholder="Game Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.name ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                  required
-                />
-                {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Zone *</label>
-                <select
-                  value={zoneId}
-                  onChange={(e) => setZoneId(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.zoneId ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                  required
-                >
-                  <option value="">Select Zone</option>
-                  {zones.map(zone => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name} - {zone.location}
-                    </option>
-                  ))}
-                </select>
-                {errors.zoneId && <p className="text-red-400 text-sm mt-1">{errors.zoneId}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Price per Hour *</label>
-                <input
-                  type="number"
-                  placeholder="Price per hour (₹0.01 - ₹100)"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.price ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                  min="0.01"
-                  max="100"
-                  step="0.01"
-                  required
-                />
-                {errors.price && <p className="text-red-400 text-sm mt-1">{errors.price}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Max Players *</label>
-                <input
-                  type="number"
-                  placeholder="Max players per booking"
-                  value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.maxPlayers ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                  min="1"
-                  max="16"
-                  step="1"
-                  required
-                />
-                {errors.maxPlayers && <p className="text-red-400 text-sm mt-1">{errors.maxPlayers}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
-                <input
-                  placeholder="https://example.com/image.jpg"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.image ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                />
-                {errors.image && <p className="text-red-400 text-sm mt-1">{errors.image}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
-                <input
-                  placeholder="Game description (max 300 chars)"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.description ? 'border-red-500' : 'border-slate-600'
-                  }`}
-                  maxLength="300"
-                />
-                {errors.description && <p className="text-red-400 text-sm mt-1">{errors.description}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2 invisible">Submit</label>
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                  >
-                    <FaPlus />
-                    {isSubmitting ? (editingGameId ? "Saving..." : "Adding Game...") : (editingGameId ? "Save Changes" : "Add Game")}
-                  </button>
-                  {editingGameId && (
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 p-3 rounded-lg border border-slate-600 transition-colors duration-200"
-                    >
-                      Cancel Edit
-                    </button>
+
+              <span className="text-slate-400 group-open:rotate-180 transition-transform duration-300">
+                ▼
+              </span>
+            </summary>
+
+            <div className="p-6 border-t border-slate-700">
+              {errors.submit && (
+                <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
+                  {errors.submit}
+                </div>
+              )}
+
+              <form
+                onSubmit={saveGame}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Game Name *
+                  </label>
+
+                  <input
+                    placeholder="Game Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.name ? "border-red-500" : "border-slate-600"
+                    }`}
+                    required
+                  />
+
+                  {errors.name && (
+                    <p className="text-red-400 text-sm mt-1">{errors.name}</p>
                   )}
                 </div>
-              </div>
-            </form>
-          </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Zone *
+                  </label>
+
+                  <select
+                    value={zoneId}
+                    onChange={(e) => setZoneId(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.zoneId ? "border-red-500" : "border-slate-600"
+                    }`}
+                    required
+                  >
+                    <option value="">Select Zone</option>
+
+                    {zones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name} - {zone.location}
+                      </option>
+                    ))}
+                  </select>
+
+                  {errors.zoneId && (
+                    <p className="text-red-400 text-sm mt-1">{errors.zoneId}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Price per Hour *
+                  </label>
+
+                  <input
+                    type="number"
+                    placeholder="Price per hour (₹0.01 - ₹100)"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.price ? "border-red-500" : "border-slate-600"
+                    }`}
+                    min="0.01"
+                    max="100"
+                    step="0.01"
+                    required
+                  />
+
+                  {errors.price && (
+                    <p className="text-red-400 text-sm mt-1">{errors.price}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Max Players *
+                  </label>
+
+                  <input
+                    type="number"
+                    placeholder="Max players per booking"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.maxPlayers ? "border-red-500" : "border-slate-600"
+                    }`}
+                    min="1"
+                    max="16"
+                    step="1"
+                    required
+                  />
+
+                  {errors.maxPlayers && (
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.maxPlayers}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Image URL
+                  </label>
+
+                  <input
+                    placeholder="https://example.com/image.jpg"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.image ? "border-red-500" : "border-slate-600"
+                    }`}
+                  />
+
+                  {errors.image && (
+                    <p className="text-red-400 text-sm mt-1">{errors.image}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Description
+                  </label>
+
+                  <input
+                    placeholder="Game description (max 300 chars)"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className={`w-full p-3 bg-slate-700 border rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      errors.description ? "border-red-500" : "border-slate-600"
+                    }`}
+                    maxLength="300"
+                  />
+
+                  {errors.description && (
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.description}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2 invisible">
+                    Submit
+                  </label>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white p-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                    >
+                      <FaPlus />
+
+                      {isSubmitting
+                        ? editingGameId
+                          ? "Saving..."
+                          : "Adding Game..."
+                        : editingGameId
+                          ? "Save Changes"
+                          : "Add Game"}
+                    </button>
+
+                    {editingGameId && (
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 p-3 rounded-lg border border-slate-600 transition-colors duration-200"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+          </details>
 
           {/* Games Table */}
           <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
             <div className="p-6 border-b border-slate-700">
-              <h2 className="text-xl font-semibold text-slate-100">All Games</h2>
+              <h2 className="text-xl font-semibold text-slate-100">
+                All Games
+              </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700">
                   <tr>
-                    <th className="p-4 text-left text-slate-300 font-medium">Game Name</th>
-                    <th className="p-4 text-left text-slate-300 font-medium">Zone</th>
-                    <th className="p-4 text-left text-slate-300 font-medium">Price/Hour</th>
-                    <th className="p-4 text-left text-slate-300 font-medium">Max Players</th>
-                    <th className="p-4 text-left text-slate-300 font-medium">Actions</th>
+                    <th className="p-4 text-left text-slate-300 font-medium">
+                      Game Name
+                    </th>
+                    <th className="p-4 text-left text-slate-300 font-medium">
+                      Zone
+                    </th>
+                    <th className="p-4 text-left text-slate-300 font-medium">
+                      Price/Hour
+                    </th>
+                    <th className="p-4 text-left text-slate-300 font-medium">
+                      Max Players
+                    </th>
+                    <th className="p-4 text-left text-slate-300 font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {games.map(game => (
-                    <tr key={game.id} className="border-t border-slate-700 hover:bg-slate-750">
-                      <td className="p-4 text-slate-100 font-medium">{game.name}</td>
+                  {games.map((game) => (
+                    <tr
+                      key={game.id}
+                      className="border-t border-slate-700 hover:bg-slate-750"
+                    >
+                      <td className="p-4 text-slate-100 font-medium">
+                        {game.name}
+                      </td>
                       <td className="p-4 text-slate-300">
                         <Link
                           href={`/admin/zones/${game.zoneId}`}
@@ -379,8 +523,12 @@ export default function AdminGames() {
                           {getZoneName(game.zoneId)}
                         </Link>
                       </td>
-                      <td className="p-4 text-slate-300">₹{game.pricePerHour}</td>
-                      <td className="p-4 text-slate-300">{game.maxPlayers ?? '—'}</td>
+                      <td className="p-4 text-slate-300">
+                        ₹{game.pricePerHour}
+                      </td>
+                      <td className="p-4 text-slate-300">
+                        {game.maxPlayers ?? "—"}
+                      </td>
                       <td className="p-4 flex gap-3">
                         <button
                           onClick={() => startEditGame(game)}
@@ -406,5 +554,5 @@ export default function AdminGames() {
         </div>
       </div>
     </div>
-  )
+  );
 }
